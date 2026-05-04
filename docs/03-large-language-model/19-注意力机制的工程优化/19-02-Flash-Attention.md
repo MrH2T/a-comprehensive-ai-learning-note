@@ -1,61 +1,275 @@
 ---
 title: "19.2 Flash Attention"
 source_docx: "第3部分 大语言模型/19.注意力机制的工程优化/19.2 Flash Attention.docx"
-status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+status: "image-reconstructed"
+ocr: "manual reconstruction completed from classified DOCX images"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---
 
 # 19.2 Flash Attention
 
+## 一、Flash Attention 解决的核心问题
 
-## 一、Flash Attention解决的核心问题
+如果说 KV Cache 解决了推理阶段的时间复杂度问题，那么 Flash Attention 的核心目的是解决训练阶段的空间复杂度问题，即 IO 瓶颈（Memory Bound）。
 
-如果说KV Cache解决了推理阶段的时间复杂度问题，那么Flash Attention的核心目的是解决训练阶段的空间复杂度问题，即IO瓶颈（Memory Bound）。
-
-在GPU中，计算单元（SRAM）速度极快但容量小，而显存（HBM）容量大但读写速度慢。标准 Attention 的计算过程中，由于中间矩阵（n*n）太大，无法放入SRAM，导致必须频繁地与HBM进行读写交换。
+在 GPU 中，计算单元（SRAM）速度极快但容量小，而显存（HBM）容量大但读写速度慢。标准 Attention 的计算过程中，由于中间矩阵 $N \times N$ 太大，无法放入 SRAM，导致必须频繁地与 HBM 进行读写交换。
 
 Flash Attention 利用了两个核心数学技巧来实现加速和显存节省：分块计算（Tiling）和重计算（Recomputation）。
 
-> [图片内容待重建：img-374883a431c9-0001] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-## 二、分块与Online Softmax
+输入矩阵为 $Q,K,V \in \mathbb{R}^{N \times d}$。标准 Attention 输出 $O$ 的计算公式为：
 
-> [图片内容待重建：img-374883a431c9-0002] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-注意：这里不会把一个token的q（k和v同理）向量切分在不同的块中。也就是说，Q和K的相乘是[ Q_1 Q_2 ... Q_Tr]^T*[K_1 K_2 ... K_Tc]，这里对任意i,j，Q_i和K_j逐个相乘，得到Tr*Tc个块。输出是这Tr*Tc个块的Softmax(Q*K)*V结果矩阵加和（而不是拼接），因此可以分块计算后相加。在SRAM中维护一个“总和块”，每次计算一个这样的块并与“总和块”相加即可。
+$$
+S = QK^T,\quad S \in \mathbb{R}^{N \times N}
+$$
 
-> [图片内容待重建：img-374883a431c9-0003] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-> [图片内容待重建：img-374883a431c9-0004] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-算法工作流：
+$$
+P = \mathrm{softmax}(S),\quad P \in \mathbb{R}^{N \times N}
+$$
 
-> [图片内容待重建：img-374883a431c9-0005] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-> [图片内容待重建：img-374883a431c9-0006] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-> [图片内容待重建：img-374883a431c9-0007] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+$$
+O = PV,\quad O \in \mathbb{R}^{N \times d}
+$$
+
+这里的关键问题是 $S$ 和 $P$ 都是 $N \times N$ 矩阵。当序列长度 $N$ 很大时，它们的显存占用会随 $N^2$ 增长，成为训练长序列模型时的主要瓶颈。
+
+## 二、分块与 Online Softmax
+
+给定序列长度 $N$ 和注意力头维度 $d$，以及 GPU 片上 SRAM 的容量 $M$（以浮点数元素个数计）。为了确保计算时 $Q$、$K$、$V$ 的子块都能容纳在 SRAM 中，论文中将分块大小计算如下：
+
+- 列分块大小（对应 $K,V$ 的序列维度）：
+
+$$
+B_c = \left\lceil \frac{M}{4d} \right\rceil
+$$
+
+- 行分块大小（对应 $Q$ 的序列维度）：
+
+$$
+B_r = \min\left(\left\lceil \frac{M}{4d} \right\rceil, d\right)
+$$
+
+根据这两个块大小，输入矩阵被切割为：
+
+- $Q \in \mathbb{R}^{N \times d}$ 被切分为 $T_r = \left\lceil \frac{N}{B_r} \right\rceil$ 个块：$Q_1,\ldots,Q_{T_r}$，每块大小为 $B_r \times d$。
+- $K,V \in \mathbb{R}^{N \times d}$ 被分别切分为 $T_c = \left\lceil \frac{N}{B_c} \right\rceil$ 个块：$K_1,\ldots,K_{T_c}$ 与 $V_1,\ldots,V_{T_c}$，每块大小为 $B_c \times d$。
+- 输出矩阵 $O \in \mathbb{R}^{N \times d}$ 及统计量向量 $l \in \mathbb{R}^N$、$m \in \mathbb{R}^N$ 也按行被切分为 $T_r$ 块。
+
+注意：这里不会把一个 token 的 $q$ 向量切分在不同的块中，$k$ 和 $v$ 同理。换句话说，分块发生在序列维度上，而不是注意力头维度上。每一对 $Q_i$ 与 $K_j$ 都会相乘，得到一个局部注意力分数块：
+
+$$
+S_{ij} = Q_iK_j^T
+$$
+
+所有 $S_{ij}$ 共同覆盖完整的 $S = QK^T$。输出不是把各块结果简单拼接，而是在 Online Softmax 的统计量校正下，把每个局部块对应的 $PV$ 贡献累加到当前输出块中。
+
+为了避免一次性生成巨大的 $N \times N$ 矩阵，Flash Attention 将输入 $Q,K,V$ 切分成小的 Block，在 SRAM 中分块计算。
+
+难点在于 Softmax 是全局操作，依赖于整行的最大值和分母之和：
+
+$$
+\mathrm{softmax}(x)_i = \frac{e^{x_i-m}}{\sum_j e^{x_j-m}},\quad m = \max(x)
+$$
+
+如果只看一部分数据，无法确定全局的 $m$ 和分母。因此 Flash Attention 使用 Online Softmax 算法，在处理新的 Block 时动态更新局部统计量。
+
+假设我们处理两个分块，第一块的局部最大值为 $m_1$，局部指数和为 $l_1$，未归一化的输出为 $O_1$；第二块对应 $m_2,l_2,O_2$。合并后的全局最大值 $m_{new}$ 和全局指数和 $l_{new}$ 的更新规则如下：
+
+$$
+m_{new} = \max(m_1,m_2)
+$$
+
+$$
+l_{new} = e^{m_1-m_{new}}l_1 + e^{m_2-m_{new}}l_2
+$$
+
+最终输出 $O_{new}$ 的更新规则为：
+
+$$
+O_{new} = \mathrm{diag}(l_{new})^{-1}\left(\mathrm{diag}\left(l_1 \odot e^{m_1-m_{new}}\right)O_1 + \mathrm{diag}\left(l_2 \odot e^{m_2-m_{new}}\right)O_2\right)
+$$
+
+通过这种方式，Flash Attention 只需要遍历一次 $K,V$，并在 SRAM 中不断更新 $O$ 的值，最终写回 HBM。中间产生的 $N \times N$ Attention 矩阵 $S$ 和 $P$ 从未完整地存在于 HBM 中。
+
+### 算法工作流
+
+外层循环遍历 Query 分块。对于 $i = 1$ 到 $T_r$：
+
+1. 从 HBM 中将 $Q_i$ 加载到 SRAM 中。
+2. 在 SRAM 中为当前块初始化局部累加器：
+
+$$
+O_i = 0,\quad l_i = 0,\quad m_i = -\infty
+$$
+
+3. 内层循环遍历 Key/Value 分块。对于 $j = 1$ 到 $T_c$：
+
+   1. 从 HBM 中将 $K_j$ 和 $V_j$ 加载到 SRAM。
+   2. 计算局部注意力分数，在 SRAM 中计算矩阵乘法：
+
+$$
+S_{ij} = Q_iK_j^T \in \mathbb{R}^{B_r \times B_c}
+$$
+
+   3. 计算局部最大值：
+
+$$
+m_{ij} = \mathrm{rowmax}(S_{ij})
+$$
+
+   4. 更新全局最大值，比较旧的行最大值与刚计算出的局部最大值：
+
+$$
+m_i^{new} = \max(m_i,m_{ij})
+$$
+
+   5. 计算局部的未归一化指数权重：
+
+$$
+P_{ij} = e^{S_{ij}-m_i^{new}}
+$$
+
+   6. 更新全局指数和，并带有缩放补偿：
+
+$$
+l_i^{new} = e^{m_i-m_i^{new}}l_i + \sum_{\text{row}} P_{ij}
+$$
+
+   7. 更新输出矩阵块，并带有缩放补偿与新值累加：
+
+$$
+O_i^{new} = e^{m_i-m_i^{new}}O_i + P_{ij}V_j
+$$
+
+   8. 状态更新，将当前状态覆盖为新的全局状态，准备处理下一个 $j$ 块：
+
+$$
+m_i \leftarrow m_i^{new},\quad l_i \leftarrow l_i^{new},\quad O_i \leftarrow O_i^{new}
+$$
+
+4. 当内层循环结束，即当前 $Q_i$ 与所有 $K,V$ 块都计算完毕，对累加好的 $O_i$ 进行真正的 Softmax 归一化：
+
+$$
+O_i = \mathrm{diag}(l_i)^{-1}O_i
+$$
+
+5. 将计算完毕的 $O_i$，以及统计量 $l_i,m_i$（用于可能的反向传播重计算）从 SRAM 一次性写回到 HBM。
+
 ## 三、重计算
 
-在反向传播时不存储庞大的注意力权重矩阵P，而是将其重新算一遍，以避免n*n的空间复杂度让显存爆炸。
+在反向传播时，Flash Attention 不存储庞大的注意力权重矩阵 $P$，而是在需要时将其重新算一遍，以避免 $N \times N$ 的空间复杂度让显存爆炸。
 
-1.为什么反向传播需要P？
+### 1. 为什么反向传播需要 $P$？
 
-> [图片内容待重建：img-374883a431c9-0008] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-假设我们已经得到了dL/dO.
+为了看清反向传播，先列出前向传播的三个关键步骤：
 
-计算dO/dV：
+1. 计算 Score：
 
-> [图片内容待重建：img-374883a431c9-0009] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-计算dO/dQ和dO/dK：
+$$
+S = QK^T
+$$
 
-> [图片内容待重建：img-374883a431c9-0010] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-接下来我们需要面对dP/dS，注意到Softmax函数不是线性函数，我们无法像用V^T表示dP/dO一样直接用常参数表示出dP/dS，相反，我们必然会用到P（或S）的值。
+2. 计算 Probability（Softmax）：
 
-> [图片内容待重建：img-374883a431c9-0011] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-2.重计算采用的方法
+$$
+P = \mathrm{softmax}(S)
+$$
 
-> [图片内容待重建：img-374883a431c9-0012] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-3.为什么Q、K不用担心这一点？
+3. 计算 Output：
 
-> [图片内容待重建：img-374883a431c9-0013] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-> [图片内容待重建：img-374883a431c9-0014] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+$$
+O = PV
+$$
+
+假设最终损失函数是 $\mathcal{L}$，目标是求 $\frac{\partial \mathcal{L}}{\partial Q}$、$\frac{\partial \mathcal{L}}{\partial K}$ 和 $\frac{\partial \mathcal{L}}{\partial V}$。并且已经得到了：
+
+$$
+dO = \frac{\partial \mathcal{L}}{\partial O}
+$$
+
+先计算 $dV$：
+
+$$
+dV = \frac{\partial \mathcal{L}}{\partial V} = P^T \cdot dO
+$$
+
+这一步已经需要 $P$。
+
+再计算从 $O = PV$ 反传到 $P$ 的梯度：
+
+$$
+dP = dO \cdot V^T
+$$
+
+这一步用到了 $V$，暂时不需要 $P$。但接下来需要面对 $dP/dS$。注意 Softmax 不是线性函数，无法像用 $V^T$ 表示 $dP/dO$ 一样直接用常参数表示出 $dP/dS$。相反，Softmax 的导数必然会用到 $P$（或 $S$）的值。
+
+可以用下面的形式直观理解这类归一化函数的导数会依赖输出值本身：
+
+$$
+\sigma'(x) = \sigma(x)\cdot(1-\sigma(x))
+$$
+
+严格地说，向量 Softmax 的雅可比矩阵满足：
+
+$$
+\frac{\partial P_i}{\partial S_j} = P_i(\delta_{ij}-P_j)
+$$
+
+在矩阵形式下，Softmax 反向传播中 $dS$ 的计算公式为（$\odot$ 代表逐元素乘法）：
+
+$$
+dS = P \odot \left(dP - (dP \odot P)1\right)
+$$
+
+这里 $1$ 代表全 1 向量，用于表示行求和操作。仔细看这个公式，里面全是 $P$。直观上，Softmax 函数在两端，即概率接近 0 或 1 的区域非常平缓，梯度很小；在中间区域梯度大。要计算梯度 $dS$，必须知道当前概率值 $P$ 到底是在平缓区还是陡峭区。
+
+如果继续反传到 $Q$ 和 $K$，则由 $S = QK^T$ 得到：
+
+$$
+dQ = dS K,\quad dK = dS^T Q
+$$
+
+如果使用缩放注意力 $S = QK^T/\sqrt{d}$，上式还需要相应乘上 $1/\sqrt{d}$ 的缩放因子。
+
+结论是：不知道 $P$，就无法穿过 Softmax 层把梯度传给 $Q$ 和 $K$。
+
+### 2. 重计算采用的方法
+
+正因为上述两个原因，反向传播计算梯度时，$P$ 是绝对不可或缺的。
+
+标准 Attention 算法的选择是：存下来。
+
+- 在前向传播时算好了 $P$，即使它有 $N \times N$ 那么大，也硬着头皮存进 HBM 显存里，留给反向传播用。这就是显存爆炸的根源。
+
+Flash Attention 算法的选择是：现用现算。
+
+- 既然 $P$ 必须用到，但又不想存它，就在反向传播需要用到 $P$ 的那一瞬间，利用已经存好的 $Q,K$ 和 SRAM 里的统计量，重新执行一遍前向计算：
+
+$$
+\mathrm{softmax}\left(\frac{QK^T}{\sqrt{d}}\right)
+$$
+
+这会生成出 $P$ 的一个小块，用完即丢。
+
+因此，Flash Attention 保存的是反向传播所需的低阶输入和统计量，例如 $Q,K,V,O,l,m$，而不是完整的 $P$。这样可以把原本需要保存的 $O(N^2)$ 中间矩阵，改成在反向传播中按块重算。
+
+### 3. 为什么保存 $Q,K,V$，但不保存 $P$？
+
+简单来说，不讨论 $Q,K,V$ 是因为它们太“小”了，而 $P$（以及 $S$）太“大”了。
+
+这里的“大”和“小”，是指随着序列长度 $N$ 增长时，显存占用的增长速度不同：
+
+- $Q,K,V$ 的大小是线性增长，复杂度为 $O(Nd)$。
+- $P$ 的大小是平方增长，复杂度为 $O(N^2)$。
+
+当 $N$ 变得非常大，例如长文本处理时，平方项才是撑爆显存的核心问题。
+
+具体来说：
+
+- 对 $Q,K,V$：因为它们很小，复杂度为 $O(Nd)$，而且重计算它们的成本也不低，需要从更底层的输入再算一遍线性层，所以 Flash Attention 选择把 $Q,K,V$ 缓存（Cache）在 HBM 显存里。
+- 对 $P$：因为它太大，复杂度为 $O(N^2)$，存它会导致 OOM（Out Of Memory），而且它的 IO 开销巨大。所以 Flash Attention 选择不存它，而是用 $Q,K,V$ 重新算一遍。
+
+这就是 Flash Attention 节省显存的核心：保留线性规模的必要状态，丢弃平方规模的中间注意力矩阵，并在反向传播需要时按块重算。
 
 ## 参考文献
 

@@ -1,8 +1,8 @@
 ---
 title: "19.1 键值缓存（KV Cache）"
 source_docx: "第3部分 大语言模型/19.注意力机制的工程优化/19.1 键值缓存（KV Cache）.docx"
-status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+status: "image-reconstructed"
+ocr: "manual reconstruction completed from classified DOCX images"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---
@@ -20,30 +20,72 @@ local_only: false
 
 传统注意力机制中：
 
-> [图片内容待重建：img-a7c1d01d1e08-0001] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+$$
+Q = XW_Q,\quad K = XW_K,\quad V = XW_V
+$$
+
 而KV Cache中，由于在生成第t+1个token时，我们只需要第t个token作为Q。而对于K和V，其实在之前生成中已经计算过其第1至t-1行（即第1至t-1个token的K和V），可以把它们存在内存中，从而可以直接拿来用，只需要计算第t个token的K和V：
 
-> [图片内容待重建：img-a7c1d01d1e08-0002] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+$$
+q_t = x_tW_Q,\quad k_t = x_tW_K,\quad v_t = x_tW_V
+$$
+
 这里的k_t和v_t在内存里拼接到之前算出的K和V矩阵下面，供后续使用。这样就能将计算复杂度从O(L)变成O(1)。
 
 2.计算注意力权重时
 
 在传统注意力机制中：
 
-> [图片内容待重建：img-a7c1d01d1e08-0003] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+$$
+\mathrm{Scores} = Q \cdot K^T
+$$
+
+操作描述：
+
+- $Q$ 的维度是 $t \times d_k$。
+- $K$ 的维度是 $t \times d_k$，因此 $K^T$ 的维度是 $d_k \times t$。
+- 这是一个标准的矩阵乘法，得到的注意力分数矩阵维度是 $t \times t$。
+
 在KV Cache中：
 
-> [图片内容待重建：img-a7c1d01d1e08-0004] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+$$
+\mathrm{Scores} = q_t \cdot (K_{\mathrm{cache}}^{(t)})^T
+$$
+
+操作描述：
+
+- $q_t$ 的维度是 $1 \times d_k$。
+- $K_{\mathrm{cache}}^{(t)}$ 的维度是 $t \times d_k$（转置后为 $d_k \times t$）。
+- 这是一次“向量-矩阵”乘法，得到的当前步注意力分数维度是 $1 \times t$。
+
 从而计算复杂度从O(L^2)变成O(L)
 
 3.加权得到输出值时
 
 在传统注意力中：
 
-> [图片内容待重建：img-a7c1d01d1e08-0005] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+$$
+Y = \mathrm{Softmax}(\mathrm{Scores}) \cdot V
+$$
+
+操作描述：
+
+- 注意力矩阵维度是 $t \times t$。
+- $V$ 矩阵维度是 $t \times d_v$。
+- 输出 $Y$ 的维度是 $t \times d_v$。
+
 在KV Cache中：
 
-> [图片内容待重建：img-a7c1d01d1e08-0006] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+$$
+y_t = \alpha_t \cdot V_{\mathrm{cache}}^{(t)}
+$$
+
+操作描述：
+
+- 权重 $\alpha_t$ 的维度是 $1 \times t$。
+- $V_{\mathrm{cache}}^{(t)}$ 的维度是 $t \times d_v$。
+- 这是一次“向量-矩阵”乘法，输出 $y_t$ 的维度是 $1 \times d_v$。
+
 ## 二、为什么训练的时候不用KV Cache？
 
 KV Cache是为了解决推理（Inference）阶段每次生成一个token的“串行计算”低效问题而设计的；而训练（Training）阶段天然是并行计算的，我们已经知道完整答案，使用Teacher Forcing和掩码技术，可以在一次计算中算出所有位置的Loss，自然就没有“缓存上一步结果给下一步用”的需求。如果在训练阶段强行使用KV Cache，反而会把高效的并行训练退化为低效的串行训练，导致训练速度下降成百上千倍。
