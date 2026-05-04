@@ -52,10 +52,65 @@ KL散度损失：衡量编码器输出的分布 N(μ, σ²) 与先验分布（
 
 ### （二）ELBO（对数似然变分下界）
 
-> [图片内容待重建：img-0fc8e4bd5355-0001] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-> [图片内容待重建：img-0fc8e4bd5355-0002] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-> [图片内容待重建：img-0fc8e4bd5355-0003] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-> [图片内容待重建：img-0fc8e4bd5355-0004] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+在概率生成模型中，我们通常假设观测数据 $x$ 是由某种未知的隐变量（Latent Variable）$z$ 生成的。我们的核心目标是最大化观测数据的边缘似然函数（即对数证据，Log-Evidence）：
+
+$$
+\log p(x)=\log\int p(x,z)dz=\log\int p(x\mid z)p(z)dz
+$$
+
+这里的困境在于：
+
+1. 积分难解（Intractability）：对于复杂的高维模型（如神经网络），隐变量 $z$ 的空间极其庞大，上述积分无法得到解析解，也无法通过简单的数值计算完成。
+2. 后验难求：根据贝叶斯定理，真实的后验分布为 $p(z\mid x)=\frac{p(x,z)}{p(x)}$。因为分母 $p(x)$（即上述积分）无法计算，真实的后验分布 $p(z\mid x)$ 也是不可知的。
+
+为了解决这个问题，变分推断引入了一个易于处理的参数化分布 $q(z)$（在 VAE 中通常记作 $q(z\mid x)$）来近似真实的后验分布 $p(z\mid x)$。
+
+ELBO 就是在这个近似过程中诞生的：既然我们无法直接最大化 $\log p(x)$，那我们就去寻找它的一个下界（Lower Bound），通过最大化这个下界，来间接地最大化 $\log p(x)$。
+
+我们从近似分布 $q(z)$ 和真实后验 $p(z\mid x)$ 之间的 KL 散度（Kullback-Leibler Divergence）出发。KL 散度衡量的是两个分布的差异：
+
+$$
+D_{KL}(q(z)\parallel p(z\mid x))=\mathbb{E}_{q(z)}\left[\log\frac{q(z)}{p(z\mid x)}\right]
+$$
+
+利用贝叶斯公式 $p(z\mid x)=\frac{p(x,z)}{p(x)}$，将其代入上式展开：
+
+$$
+D_{KL}(q(z)\parallel p(z\mid x))=\mathbb{E}_{q(z)}\left[\log\frac{q(z)p(x)}{p(x,z)}\right]
+$$
+
+利用对数的性质拆分：
+
+$$
+D_{KL}(q(z)\parallel p(z\mid x))=\mathbb{E}_{q(z)}[\log q(z)-\log p(x,z)+\log p(x)]
+$$
+
+由于 $\log p(x)$ 是关于观测数据 $x$ 的常数，与隐变量 $z$ 无关，我们可以将其从关于 $q(z)$ 的期望中提取出来：
+
+$$
+D_{KL}(q(z)\parallel p(z\mid x))=\mathbb{E}_{q(z)}[\log q(z)-\log p(x,z)]+\log p(x)
+$$
+
+整理可得：
+
+$$
+\log p(x)=\mathbb{E}_{q(z)}[\log p(x,z)-\log q(z)]+D_{KL}(q(z)\parallel p(z\mid x))
+$$
+
+根据 KL 散度的非负性（$D_{KL}\ge 0$），我们可以得出：
+
+$$
+\log p(x)\ge \mathbb{E}_{q(z)}\left[\log\frac{p(x,z)}{q(z)}\right]
+$$
+
+等式右侧的这一项，就是我们要找的对数似然变分下界（ELBO），通常记为 $\mathcal{L}$：
+
+$$
+ELBO=\mathcal{L}=\mathbb{E}_{q(z)}\left[\log\frac{p(x,z)}{q(z)}\right]
+$$
+
+核心推论：由上述等式 $\log p(x)=ELBO+D_{KL}(q(z)\parallel p(z\mid x))$ 可知，当我们在优化模型（最大化 ELBO）时，由于 $\log p(x)$ 是固定的数据属性，最大化 ELBO 在数学上严格等价于最小化近似后验 $q(z)$ 与真实后验 $p(z\mid x)$ 之间的 KL 散度。这就是为什么通过优化 ELBO 可以让我们的近似分布逼近真实分布。
+
 > [图片内容待重建：img-0fc8e4bd5355-0005] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
 ## 二、VQ-VAE（向量量化变分自编码器）
 
