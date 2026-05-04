@@ -81,4 +81,4 @@ ResNet通过堆叠上述残差块构建了不同深度的网络。
 
 ## 参考文献
 
-暂无已核验参考文献。
+- He, K., Zhang, X., Ren, S., & Sun, J. (2016). [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385). CVPR 2016.

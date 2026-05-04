@@ -69,4 +69,4 @@ PPO由TRPO衍生而来。TRPO提出了运用重要性采样、限制更新范围
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Schulman, J., Wolski, F., Dhariwal, P., Radford, A., & Klimov, O. (2017). [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347). arXiv:1707.06347.

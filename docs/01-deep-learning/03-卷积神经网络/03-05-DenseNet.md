@@ -133,4 +133,4 @@ VoVNet（One-Shot Aggregation）：仅在模块最后一层聚合前面所有层
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Huang, G., Liu, Z., van der Maaten, L., & Weinberger, K. Q. (2017). [Densely Connected Convolutional Networks](https://arxiv.org/abs/1608.06993). CVPR 2017.

@@ -141,4 +141,4 @@ $$
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Williams, R. J. (1992). [Simple statistical gradient-following algorithms for connectionist reinforcement learning](https://link.springer.com/article/10.1007/BF00992696). Machine Learning.

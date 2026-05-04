@@ -140,4 +140,4 @@ Inception模块的任务： 处理已经过初步处理的特征图。它的核
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Szegedy, C., Liu, W., Jia, Y., et al. (2015). [Going Deeper with Convolutions](https://arxiv.org/abs/1409.4842). CVPR 2015.

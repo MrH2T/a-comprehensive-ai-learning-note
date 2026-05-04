@@ -251,4 +251,5 @@ DualPipe的“代价”是一个GPU需要存两倍的权重。原因：
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Narayanan, D., Harlap, A., Phanishayee, A., et al. (2019). [PipeDream: Generalized Pipeline Parallelism for DNN Training](https://dl.acm.org/doi/10.1145/3341301.3359646). SOSP 2019.
+- DeepSeek-AI. (2024). [DeepSeek-V3 Technical Report](https://arxiv.org/abs/2412.19437). arXiv:2412.19437.

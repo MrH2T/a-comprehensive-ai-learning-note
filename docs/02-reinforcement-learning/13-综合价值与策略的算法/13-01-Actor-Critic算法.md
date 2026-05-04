@@ -94,4 +94,4 @@ Critic：
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Mnih, V., Badia, A. P., Mirza, M., et al. (2016). [Asynchronous Methods for Deep Reinforcement Learning](https://arxiv.org/abs/1602.01783). ICML 2016.

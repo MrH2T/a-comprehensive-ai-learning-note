@@ -119,4 +119,4 @@ Dyna-Q强依赖于模型的准确性。如果Model(s, a)预测的结果与真实
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Sutton, R. S. (1990). [Integrated Architectures for Learning, Planning, and Reacting Based on Approximating Dynamic Programming](http://incompleteideas.net/papers/sutton-90.pdf). ICML 1990.

@@ -78,4 +78,4 @@ $$
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Loshchilov, I., & Hutter, F. (2019). [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101). ICLR 2019.

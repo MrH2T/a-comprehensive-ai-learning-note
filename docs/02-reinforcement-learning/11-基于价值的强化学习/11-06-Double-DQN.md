@@ -105,4 +105,4 @@ $$
 
 ## 参考文献
 
-暂无已核验参考文献。
+- van Hasselt, H., Guez, A., & Silver, D. (2016). [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461). AAAI 2016.

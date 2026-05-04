@@ -61,4 +61,4 @@ $$
 
 ## 参考文献
 
-暂无已核验参考文献。
+- Wang, Z., Schaul, T., Hessel, M., van Hasselt, H., Lanctot, M., & de Freitas, N. (2016). [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/abs/1511.06581). ICML 2016.
