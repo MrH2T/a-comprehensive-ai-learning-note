@@ -17,8 +17,10 @@ local_only: false
 
 OpenClaw由奥地利开发者Peter Steinberger一人用约10天的时间用AI Coding构建并发布，最初命名为Clawdbot，因遭到 Anthropic的商标侵权投诉，项目被迫改名为Moltbot（Molt 意为“蜕壳”，契合其龙虾主题），后项目再次更名为OpenClaw。它凭借强大的本地控制能力和开源属性在GitHub及各大社区呈病毒式传播。在Openclaw诞生后，还出现了一个AI Agent专属的社交网站Moltbook。2026年2月14日，Peter Steinberger宣布加入OpenAI，并将OpenClaw项目移交给一个开源基金会进行长效维护。
 
-> [图片内容待重建：img-7ddee0f7d6a2-0001] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
-> [图片内容待重建：img-7ddee0f7d6a2-0002] 原 Word 此处有图片。为避免版权风险，开源版暂不上传图片；自动 OCR 已弃用，后续将依据原稿人工重建为 Markdown/LaTeX。
+![OpenClaw 与 opencode 的 GitHub Star 增长对比](../../../assets/images/04-agents-and-continual-learning/22-05/img-7ddee0f7d6a2-0001.png)
+
+社交媒体上也出现了用户体验反馈：有用户称，自己在进行研究时，电脑突然通过语音与其互动；他随后发现自己的 ClawdBot Henry 接入了基于 ChatGPT API 的语音提醒能力，能够在完成长时间编码或研究任务后通过语音提示用户。
+
 ## 二、核心架构
 
 1.本地网关：作为一个长期运行的后台服务（基于 Node.js），它监听来自聊天平台的API请求，并将其转化为LLM可理解的指令格式。
