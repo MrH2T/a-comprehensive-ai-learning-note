@@ -2,7 +2,7 @@
 title: "20.4 Attention Residuals（论文）"
 source_docx: "第3部分 大语言模型/20.大模型的架构和训练方法优化/20.4 Attention Residuals（论文）.docx"
 status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+ocr: "no pending image placeholders in public Markdown"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---

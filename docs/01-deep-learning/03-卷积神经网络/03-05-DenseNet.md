@@ -2,7 +2,7 @@
 title: "3.5 DenseNet"
 source_docx: "第1部分 深度学习/3.卷积神经网络/3.5 DenseNet.docx"
 status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+ocr: "no pending image placeholders in public Markdown"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---

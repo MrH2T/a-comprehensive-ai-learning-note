@@ -2,7 +2,7 @@
 title: "13.3 PPO算法与GAE"
 source_docx: "第2部分 强化学习/13.综合价值与策略的算法/13.3 PPO算法与GAE.docx"
 status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+ocr: "no pending image placeholders in public Markdown"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---

@@ -2,7 +2,7 @@
 title: "1.5 交叉熵损失（CE）与Softmax回归"
 source_docx: "第1部分 深度学习/1.深度学习基础理论/1.5 交叉熵损失（CE）与Softmax回归.docx"
 status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+ocr: "no pending image placeholders in public Markdown"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---

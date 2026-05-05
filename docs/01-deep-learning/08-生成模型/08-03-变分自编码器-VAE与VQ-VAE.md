@@ -2,7 +2,7 @@
 title: "8.3 变分自编码器（VAE）与VQ-VAE"
 source_docx: "第1部分 深度学习/8.生成模型/8.3 变分自编码器（VAE）与VQ-VAE.docx"
 status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+ocr: "no pending image placeholders in public Markdown"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---

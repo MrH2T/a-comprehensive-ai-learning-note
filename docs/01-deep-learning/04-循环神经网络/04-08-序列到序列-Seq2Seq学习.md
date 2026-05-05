@@ -2,7 +2,7 @@
 title: "4.8 序列到序列（Seq2Seq）学习"
 source_docx: "第1部分 深度学习/4.循环神经网络/4.8 序列到序列（Seq2Seq）学习.docx"
 status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+ocr: "no pending image placeholders in public Markdown"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---

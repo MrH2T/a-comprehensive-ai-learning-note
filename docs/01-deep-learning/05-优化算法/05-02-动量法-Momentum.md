@@ -2,7 +2,7 @@
 title: "5.2 动量法（Momentum）"
 source_docx: "第1部分 深度学习/5.优化算法/5.2 动量法（Momentum）.docx"
 status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+ocr: "no pending image placeholders in public Markdown"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---

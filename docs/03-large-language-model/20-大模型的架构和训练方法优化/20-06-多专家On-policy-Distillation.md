@@ -2,7 +2,7 @@
 title: "20.6 多专家On-policy Distillation"
 source_docx: "第3部分 大语言模型/20.大模型的架构和训练方法优化/20.6 多专家On-policy Distillation.docx"
 status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+ocr: "no pending image placeholders in public Markdown"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---
