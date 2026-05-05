@@ -1,8 +1,8 @@
 ---
 title: "3.4 残差网络（ResNet）"
 source_docx: "第1部分 深度学习/3.卷积神经网络/3.4 残差网络（ResNet）.docx"
-status: "auto-converted"
-ocr: "disabled; image content awaits manual reconstruction"
+status: "image-reconstructed"
+ocr: "manual reconstruction completed from classified DOCX images"
 license: "CC BY-NC-SA 4.0"
 local_only: false
 ---
@@ -75,9 +75,7 @@ ResNet通过堆叠上述残差块构建了不同深度的网络。
 
 ## 五、现代大模型中残差的应用
 
-现代大模型中，不是用一个从输入直接连到输出的残差一般在每个块或层中，都会加一个残差结构，以让梯度和信息顺畅流过该块或层，使信息流动更灵活，如下图中Transformer架构里的多处Add：
-
-![Transformer 架构中的残差连接](../../../assets/images/01-deep-learning/03-04/img-fe3e92d96689-0003.png)
+现代大模型中，不是用一个从输入直接连到输出的残差一般在每个块或层中，都会加一个残差结构，以让梯度和信息顺畅流过该块或层，使信息流动更灵活，如 Transformer 架构里的多处 Add。
 
 ## 参考文献
 
