@@ -55,9 +55,9 @@ $$
 4. 目标读取与单步去噪：对于当前的 $(m,t)$，算法读取矩阵设定值 $k=K_{m,t}$。随后，模型利用当前的隐状态 $z_{t-1}$ 和带有当前实际噪声的 $x_t$，预测噪声 $\epsilon_\theta(z_{t-1},x_t,k)$，并通过 Langevin 动力学公式或 DDIM，将 $x_t$ 的噪声精确降至目标层级 $k$。
 5. 因果状态更新：利用刚刚去噪后的 $x_t$ 更新隐状态 $z_t$。由于是因果架构，这个更新后的 $z_t$ 将包含 $x_{1:t}$ 的最新信息，并传递给下一个时间步 $t+1$。
 
-### （四）基于排程矩阵 $K$ 的生成范式
+### （四）基于排程矩阵的生成范式
 
-基于排程矩阵，可以得到三种典型生成范式。
+基于排程矩阵 $K$，可以得到三种典型生成范式。
 
 #### 1. 全序列扩散模式
 
@@ -111,9 +111,14 @@ $$
 随后，将未来奖励梯度直接注入到去噪预测中，类似于分类器引导（Classifier Guidance）的做法：
 
 $$
+\begin{aligned}
 \tilde{\epsilon}
-=\epsilon_\theta(x_t^k,k_t)
--\eta\sqrt{1-\bar{\alpha}_{k_t}}\nabla_{x_t^k}\bar{R}(x_t^k)
+&=
+\epsilon_\theta(x_t^k,k_t)
+\\
+&\quad -
+\eta\sqrt{1-\bar{\alpha}_{k_t}}\nabla_{x_t^k}\bar{R}(x_t^k)
+\end{aligned}
 $$
 
 然后使用这个被修正过的噪声 $\tilde{\epsilon}$，去把 $x_t^k$ 降噪到下一个更清晰的层级 $x_t^{k-1}$。

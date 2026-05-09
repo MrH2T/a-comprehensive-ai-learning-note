@@ -235,8 +235,7 @@ $$
 $$
 \begin{aligned}
 \nabla_{x_t}\log p_t(x_t|x_1)
-&=
--\frac{x_t-tx_1}{(1-t)^2}
+&= -\frac{x_t-tx_1}{(1-t)^2}
 \end{aligned}
 $$
 
