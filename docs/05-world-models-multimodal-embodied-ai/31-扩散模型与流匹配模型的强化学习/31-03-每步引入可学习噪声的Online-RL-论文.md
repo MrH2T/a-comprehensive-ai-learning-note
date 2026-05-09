@@ -56,10 +56,10 @@ $$
 
 $$
 \begin{aligned}
-\log\pi_\theta(\mathbf{a}_t|\mathbf{o}_t)
+\log \pi_\theta(\mathbf{a}_t \mid \mathbf{o}_t)
 &=
 \sum_{\tau=0}^{1-\delta}
-\log p_\theta(\mathbf{A}_t^{\tau+\delta}|\mathbf{A}_t^\tau,\mathbf{o}_t)
+\log p_\theta(\mathbf{A}_t^{\tau+\delta}\mid \mathbf{A}_t^\tau,\mathbf{o}_t)
 \end{aligned}
 $$
 
@@ -79,7 +79,11 @@ $$
 1. 构建内部状态：组合观测与隐变量得到 $\bar{s}_t^\tau$。
 2. 网络推理：将 $\bar{s}_t^\tau$ 输入 VLA 骨干网络（如 Transformer），预测出当前的速度场，进而计算出期望去噪方向。
 3. 噪声评估：辅助的可学习噪声网络根据当前状态输出标准差 $\sigma_\tau$。
-4. 采样与记录：采样随机噪声 $\epsilon$，计算下一步隐变量 $\mathbf{A}_t^{\tau+\delta}$。同时，将该步的对数似然 $\log p_\theta(\mathbf{A}_t^{\tau+\delta}|\mathbf{A}_t^\tau,\mathbf{o}_t)$ 记录到缓存中。
+4. 采样与记录：采样随机噪声 $\epsilon$，计算下一步隐变量 $\mathbf{A}_t^{\tau+\delta}$。同时，将该步的对数似然记录到缓存中：
+
+$$
+\log p_\theta\left(\mathbf{A}_t^{\tau+\delta}\mid \mathbf{A}_t^\tau,\mathbf{o}_t\right)
+$$
 
 步骤 3：动作执行与奖励获取（外部循环终点）
 
@@ -90,7 +94,7 @@ $$
 步骤 4：强化学习策略更新（RL 反向传播）
 
 1. 收集到一个或多个 Episode 的完整轨迹后，计算累计优势函数（Advantage）。
-2. 提取出步骤 2 中精确计算的联合对数似然总和 $\sum_\tau\log p_\theta$。
+2. 提取出步骤 2 中精确计算的联合对数似然总和 $\sum_{\tau}\log p_\theta$。
 3. 应用 PPO 算法的截断代理目标函数（Surrogate Objective）计算策略梯度。
 4. 更新 VLA 模型网络参数 $\theta$ 以及噪声网络参数，使得在相似观测下，能获取高环境奖励的去噪轨迹生成概率最大化。
 

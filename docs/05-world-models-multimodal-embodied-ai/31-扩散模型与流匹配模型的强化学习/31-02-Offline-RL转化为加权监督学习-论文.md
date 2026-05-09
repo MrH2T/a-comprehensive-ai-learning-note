@@ -18,13 +18,13 @@ local_only: false
 
 该方法的核心思想是 **“避开在线探索的难题，将 RL 转化为加权的监督学习”**。
 
-- 它首先定义了一个代理散度 $D_{FM}$，试图让当前模型 $\pi_\theta$ 在流匹配损失空间内逼近理论最优策略 $\pi^{*}$。
+- 它首先定义了一个代理散度 $D_{\mathrm{FM}}$，试图让当前模型 $\pi_\theta$ 在流匹配损失空间内逼近理论最优策略 $\pi^{*}$。
 - 由于无法直接从 $\pi^{*}$ 采样，它利用重要性采样（Importance Sampling），引入静态离线数据集 $D$，并赋予权重 $w(o, a) \propto \exp(A / \beta)$，即优势 $A$ 越大的动作，权重越高。
 - 点睛之笔在于最后的“极端设定”：通过让折扣因子 $\gamma \to 1$ 并给予极端负奖励，优势函数被极化，权重 $w(o, a)$ 变成了二值 $\{0, 1\}$。这在数学上等价于直接丢弃所有“失败”的轨迹，只保留“成功”的轨迹进行监督学习。
 
 ### （二）数学表达
 
-在标准的正则化强化学习框架下，我们的目标是在最大化奖励的同时，约束新策略 $\pi_\theta$ 不要偏离参考策略 $\pi_{ref}$ 太远。其目标函数定义为：
+在标准的正则化强化学习框架下，我们的目标是在最大化奖励的同时，约束新策略 $\pi_\theta$ 不要偏离参考策略 $\pi_{\mathrm{ref}}$ 太远。其目标函数定义为：
 
 $$
 \begin{aligned}
@@ -33,7 +33,7 @@ J(\theta)
 \left[
 R(\tau)
 - \beta \mathbb{E}_{o \sim p_\theta}
-\left[D(\pi_\theta(\cdot \mid o) \Vert \pi_{ref}(\cdot \mid o))\right]
+\left[D(\pi_\theta(\cdot \mid o) \Vert \pi_{\mathrm{ref}}(\cdot \mid o))\right]
 \right]
 \end{aligned}
 $$
@@ -44,8 +44,8 @@ $$
 \begin{aligned}
 \pi^{*}(a \mid o)
 &\propto
-\pi_{ref}(a \mid o)
-\exp\left(\frac{A^{\pi_{ref}}(o, a)}{\beta}\right)
+\pi_{\mathrm{ref}}(a \mid o)
+\exp\left(\frac{A^{\pi_{\mathrm{ref}}}(o, a)}{\beta}\right)
 \end{aligned}
 $$
 
@@ -66,25 +66,29 @@ D_{\mathrm{KL}}(\pi^{*}(\cdot \mid o) \Vert \pi_\theta(\cdot \mid o))
 \end{aligned}
 $$
 
-展开 KL 散度后，这等价于最大化加权对数似然（Weighted Log-likelihood）：$\mathbb{E}[w(o, a)\log \pi_\theta(a \mid o)]$。
+展开 KL 散度后，这等价于最大化加权对数似然（Weighted Log-likelihood）：
 
-**问题就在这里**：我们的 VLA 模型是用流匹配目标 $\mathcal{L}_{FM}$ 训练的，它根本算不出确切的 $\log \pi_\theta(a \mid o)$。这条传统路线走不通。
+$$
+\mathbb{E}\left[w(o, a)\log \pi_\theta(a \mid o)\right]
+$$
+
+**问题就在这里**：我们的 VLA 模型是用流匹配目标 $\mathcal{L}_{\mathrm{FM}}$ 训练的，它根本算不出确切的 $\log \pi_\theta(a \mid o)$。这条传统路线走不通。
 替代散度法：
 
 $$
 \begin{aligned}
-D_{FM}(\pi^{*}(\cdot \mid o), \pi_\theta(\cdot \mid o))
+D_{\mathrm{FM}}(\pi^{*}(\cdot \mid o), \pi_\theta(\cdot \mid o))
 &\triangleq
 \mathbb{E}_{a \sim \pi^{*}(\cdot \mid o)}
-\left[\mathcal{L}_{FM}(\theta; o, a)\right]
+\left[\mathcal{L}_{\mathrm{FM}}(\theta; o, a)\right]
 \end{aligned}
 $$
 
-通俗解释：这个公式的物理意义是，“假设我现在能从理论最优策略 $\pi^{*}$ 中抽取出完美的动作样本 $a$，那么我就用模型自带的流匹配损失函数 $\mathcal{L}_{FM}$，强迫我的神经网络 $\pi_\theta$ 去学习、生成这些完美的动作。”
+通俗解释：这个公式的物理意义是，“假设我现在能从理论最优策略 $\pi^{*}$ 中抽取出完美的动作样本 $a$，那么我就用模型自带的流匹配损失函数 $\mathcal{L}_{\mathrm{FM}}$，强迫我的神经网络 $\pi_\theta$ 去学习、生成这些完美的动作。”
 
 这就巧妙地避开了计算概率分布的要求，直接在流匹配的损失空间里衡量两个策略的“距离”。
 
-有了新的散度 $D_{FM}$，策略投影步骤就变成了：
+有了新的散度 $D_{\mathrm{FM}}$，策略投影步骤就变成了：
 
 $$
 \begin{aligned}
@@ -93,7 +97,7 @@ $$
 \mathbb{E}_{o \sim D}
 \mathbb{E}_{a \sim \pi^{*}(\cdot \mid o)}
 \left[
-\mathcal{L}_{FM}(\theta; o, a)
+\mathcal{L}_{\mathrm{FM}}(\theta; o, a)
 \right]
 \end{aligned}
 $$
@@ -108,7 +112,7 @@ $$
 &\approx \arg\min_\theta
 \mathbb{E}_{(o,a) \sim D}
 \left[
-w(o, a)\mathcal{L}_{FM}(\theta; o, a)
+w(o, a)\,\mathcal{L}_{\mathrm{FM}}(\theta; o, a)
 \right]
 \end{aligned}
 $$
@@ -179,8 +183,8 @@ $$
 
 $$
 \begin{aligned}
-\log p_\theta(x\mid c)\approx
-&-\mathbb{E}_{t,\epsilon}\left[\mathcal{L}_\theta(x,c,t)\right]+C
+\log p_\theta(x\mid c)
+&\approx -\mathbb{E}_{t,\epsilon}\left[\mathcal{L}_\theta(x,c,t)\right]+C
 \end{aligned}
 $$
 
@@ -236,7 +240,7 @@ $$
 
 3. 计算参考模型的误差（No Gradient）：将加噪后的好图、坏图连同 $t$ 和 $c$ 输入冻结的参考模型 $\theta_{\mathrm{ref}}$，计算它们预测噪声与真实噪声 $\epsilon$ 的均方误差：$\mathcal{L}_{\mathrm{ref}}(x_w)$ 和 $\mathcal{L}_{\mathrm{ref}}(x_l)$。
 4. 计算策略模型的误差（With Gradient）：将同样的数据输入正在训练的策略模型 $\theta$，计算其预测误差：$\mathcal{L}_\theta(x_w)$ 和 $\mathcal{L}_\theta(x_l)$。
-5. 反向传播更新：将上述四个误差标量代入 $\mathcal{L}_{\mathrm{DPO-Diff}}(\theta)$ 公式中。通过深度学习框架（如 PyTorch）的自动求导机制计算关于 $\theta$ 的梯度，并使用优化器（如 AdamW）更新模型权重。
+5. 反向传播更新：将上述四个误差标量代入 $\mathcal{L}_{\mathrm{DPO}\text{-}\mathrm{Diff}}(\theta)$ 公式中。通过深度学习框架（如 PyTorch）的自动求导机制计算关于 $\theta$ 的梯度，并使用优化器（如 AdamW）更新模型权重。
 
 ## 参考文献
 

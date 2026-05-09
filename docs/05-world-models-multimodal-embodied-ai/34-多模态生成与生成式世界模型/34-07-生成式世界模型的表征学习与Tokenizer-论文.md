@@ -334,7 +334,7 @@ r_\beta(N_x|x) =
 \delta\left(
 \beta\cdot
 \frac{\mathrm{ELBO}(x)}
-\mathbb{E}[\mathrm{ELBO}(x)]
+{\mathbb{E}[\mathrm{ELBO}(x)]}
 \right)
 $$
 
