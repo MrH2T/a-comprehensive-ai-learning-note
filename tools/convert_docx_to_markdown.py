@@ -757,8 +757,6 @@ def build_directory_markdown(records: list[ConvertedDoc]) -> str:
             flags = []
             if "论文" in record.title:
                 flags.append("论文笔记")
-            if record.ocr_failed:
-                flags.append("OCR待校对")
             suffix = f"（{'，'.join(flags)}）" if flags else ""
             lines.append(f"- [{record.title}]({link}){suffix}")
         lines.append("")
