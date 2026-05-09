@@ -92,7 +92,7 @@ Monte-Carlo Guidance（MCG）在每次去噪时都采样未来。具体步骤如
 
 1. 当前时刻的观测：智能体在环境的当前真实时间步，获得了历史积累的隐状态 $z_{t-1}$。
 2. 生成规划视距（Look-ahead Window）：模型并不会一口气规划到宇宙末日，而是设定一个向未来的视距 $H$。此时模型开始在隐空间中生成一个局部的未来序列 $x_{t:t+H}$。
-3. 每个去噪步的 MCG 采样：在这个局部序列 $x_{t:t+H}$ 的每一次去噪迭代中，为了决定如何给当前的 $x_t^k$ 去噪，模型都会在隐海中向未来 $(t+1\text{ 到 }t+H)$ 平行分叉出多条带有不确定性的轨迹。
+3. 每个去噪步的 MCG 采样：在这个局部序列 $x_{t:t+H}$ 的每一次去噪迭代中，为了决定如何给当前的 $x_t^k$ 去噪，模型都会在隐海中向未来 $t+1$ 到 $t+H$ 平行分叉出多条带有不确定性的轨迹。
 
 计算这 $N$ 条轨迹的预期未来奖励 $R^{(i)}$，并求平均值：
 
@@ -158,10 +158,10 @@ $$
 \left[
 \sum_{t=1}^T
 \left(
-\frac{1}{K+1}\log p_\theta(x_t^0|z_{1:t},z_{t-1}) +
+\frac{1}{K+1}\log p_\theta(x_t^0\mid z_{1:t},z_{t-1}) +
 \sum_{j=2}^K
 \frac{j}{K+1}
-D_{\mathrm{KL}}\left(q(x_t^{j-1}|x_t^j,x_t^0)\middle\|p_\theta(x_t^{j-1}|x_t^j,z_{t-1})\right)
+D_{\mathrm{KL}}\left(q(x_t^{j-1}\mid x_t^j,x_t^0)\middle\|p_\theta(x_t^{j-1}\mid x_t^j,z_{t-1})\right)
 \right)
 \right]
 $$
@@ -263,23 +263,23 @@ $$
 
 ### （五）两个损失函数的作用
 
-#### 1. $L_{\mathrm{DMD}}$：分布匹配蒸馏损失
+#### 1. 分布匹配蒸馏损失
 
-这是学生模型在因果自展开（Causal Self-Rollout）过程中计算的损失，目的是让学生学会像老师一样进行多步去噪。它的本质是一个 Reverse-KL（逆 KL 散度）：
+这一项记为 $L_{\mathrm{DMD}}$，是在学生模型因果自展开（Causal Self-Rollout）过程中计算的损失，目的是让学生学会像老师一样进行多步去噪。它的本质是一个 Reverse-KL（逆 KL 散度）：
 
 $$
 L_{\mathrm{DMD}} =
 \mathbb{E}_{t,x}
 \left[
-D_{\mathrm{KL}}\left(p_\theta(x_0|x_t)\middle\|p_{\mathrm{teacher}}(x_0|x_t)\right)
+D_{\mathrm{KL}}\left(p_\theta(x_0\mid x_t)\middle\|p_{\mathrm{teacher}}(x_0\mid x_t)\right)
 \right]
 $$
 
 物理意义是：逆 KL 散度评估的是学生分布覆盖教师分布的程度。由于公式中 $p_\theta$ 在前，它天生具有寻求众数（mode-seeking）的倾向。带来的问题是，当学生模型在长序列中自己滚动生成时，预测复杂运动容易出错。为了快速拉低 $L_{\mathrm{DMD}}$，模型会自发地倾向于去拟合教师分布中最安全、最容易预测的模式，也就是几乎不动的静态画面。在分层去噪的复杂上下文中，这种坍缩效应甚至会被放大。
 
-#### 2. $L_{\mathrm{FKL}}$：前向 KL 正则化损失
+#### 2. 前向 KL 正则化损失
 
-为了防止模型变成静态图片生成器，作者引入了基于轨迹采样的正则化项，追使模型单步输出对齐教师的真实参考轨迹：
+为了防止模型变成静态图片生成器，作者引入了记为 $L_{\mathrm{FKL}}$ 的基于轨迹采样的正则化项，迫使模型单步输出对齐教师的真实参考轨迹：
 
 $$
 L_{\mathrm{FKL}} =

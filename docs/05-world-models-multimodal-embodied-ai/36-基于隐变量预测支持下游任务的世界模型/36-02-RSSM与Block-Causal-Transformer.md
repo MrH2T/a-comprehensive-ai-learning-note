@@ -90,9 +90,9 @@ $$
 对于序列中的每一个时间步 $t = 1 \ldots L$：
 
 1. 执行确定性状态转移：将上一步的 $h_{t-1}$、$s_{t-1}$（通过重参数化采样得到）和动作 $a_{t-1}$ 输入 RNN $f$，得到当前的确定性状态 $h_t$。
-2. 计算先验分布 $p$：将 $h_t$ 输入 MLP，输出当前先验高斯的均值和方差 $\mu_{prior}$、$\sigma_{prior}$。
-3. 计算后验分布 $q$：将当前的图像 $o_t$ 通过 CNN 提取特征，结合 $h_t$ 输入到另一个 MLP，输出后验高斯的均值和方差 $\mu_{post}$、$\sigma_{post}$。
-4. 重参数化采样：从后验分布 $\mathcal{N}(\mu_{post}, \sigma_{post}^2)$ 中采样出潜在向量 $s_t$。
+2. 计算先验分布 $p$：将 $h_t$ 输入 MLP，输出当前先验高斯的均值和方差 $\mu_{\mathrm{prior}}$、$\sigma_{\mathrm{prior}}$。
+3. 计算后验分布 $q$：将当前的图像 $o_t$ 通过 CNN 提取特征，结合 $h_t$ 输入到另一个 MLP，输出后验高斯的均值和方差 $\mu_{\mathrm{post}}$、$\sigma_{\mathrm{post}}$。
+4. 重参数化采样：从后验分布 $\mathcal{N}(\mu_{\mathrm{post}}, \sigma_{\mathrm{post}}^2)$ 中采样出潜在向量 $s_t$。
 
 - **步骤 3：计算重构与预测**
 
@@ -113,13 +113,15 @@ $$
 损失分为三部分：仅有过去记忆时对现在潜变量的预测p和包含过去记忆与现在观测时的真实现在潜变量q之间的KL散度，体现的是预测下一时刻的潜变量和真实下一时刻的潜变量的差距，反映预测下一时刻状态的能力；图像重构损失反映由潜变量重构像素的能力；奖励损失反映由潜变量预测奖励的能力。表达式如下：
 
 $$
+\begin{aligned}
 \mathcal{L}
-=
+&=
 \sum_{t=1}^{T}
-\left(
+\Biggl(
 -\mathbb{E}_{q(s_t \mid o_{\le t}, a_{<t})}
 \left[\ln p(o_t \mid s_t) + \ln p(r_t \mid s_t)\right]
-+
+\\
+&\quad+
 \mathbb{E}
 \left[
 D_{\mathrm{KL}}\left(
@@ -128,7 +130,8 @@ q(s_t \mid o_{\le t}, a_{<t})
 p(s_t \mid s_{t-1}, a_{t-1})
 \right)
 \right]
-\right)
+\Biggr)
+\end{aligned}
 $$
 
 这里 $o_t$ 和 $r_t$ 均满足高斯分布，故这两项等价于 MSE Loss。
@@ -136,12 +139,14 @@ $$
 由于标准目标只通过一步 KL 散度训练随机路径，模型在多步预测时容易发散。Latent Overshooting 将约束扩展到距离为 $d$ 的所有未来时间步：
 
 $$
-\mathcal{L}_{overshooting}(\theta)
-=
+\begin{aligned}
+\mathcal{L}_{\mathrm{overshooting}}(\theta)
+&=
 \sum_{t=1}^{T}
-\left(
+\Biggl(
 -\mathbb{E}_{q}\left[\ln p(o_t \mid s_t)\right]
-+
+\\
+&\quad+
 \frac{1}{D}
 \sum_{d=1}^{D}
 \beta_d
@@ -153,7 +158,8 @@ q(s_t \mid o_{\le t})
 p(s_t \mid s_{t-d})
 \right)
 \right]
-\right)
+\Biggr)
+\end{aligned}
 $$
 
 - **物理意义**：它不仅要求“由 $t - 1$ 步预测的 $t$ 步先验”要与后验对齐，还要求“由 $t - 2$ 步、$t - d$ 步连续多步推演得出的 $t$ 步先验”也要与当前后验对齐。这种潜在空间中的一致性正则化，增强了模型在不依赖真实观测时的长期演化能力。
@@ -182,7 +188,7 @@ $$
 
 ### （二）Dreamer 3：利用世界模型进行RL训练
 
-1.世界模型
+**1. 世界模型**
 
 - 世界模型通过自动编码技术，将复杂的感知输入（如图像）压缩成紧凑的潜在表示。
 - 它被实现为一个循环状态空间模型（RSSM）。
@@ -192,7 +198,7 @@ $$
 
 在数学上，RSSM 是一种结合了确定性循环神经网络（RNN）和随机状态变量的生成式模型。在时间步 $t$，它定义动作 $a_t$、观测输入 $x_t$、奖励 $r_t$ 以及回合继续标志 $c_t \in \{0, 1\}$。
 
-2.Critic
+**2. Critic**
 
 **Step 2：评论家学习（Critic Learning）**
 
@@ -200,19 +206,19 @@ $$
 - 评论家接收模型状态 $s_t = [h_t, z_t]$，并学习评估该状态的价值。
 - 为了考虑长期收益，评论家预测的是回报分布的期望值，并使用自举（bootstrapped）的 $\lambda$-回报来整合预测的奖励和价值。
 
-3.Actor
+**3. Actor**
 
 **Step 3：演员学习（Actor Learning）**
 
 - 演员的目标是选择能够最大化回报的动作，同时通过熵正则化（entropy regularizer）来鼓励探索。
 - 它通过策略梯度方法（Reinforce estimator）在想象的轨迹上进行优化。
 
-4.损失函数
+**4. 损失函数**
 
 （1）预测损失
 
 $$
-\mathcal{L}_{pred}(\phi)
+\mathcal{L}_{\mathrm{pred}}(\phi)
 \doteq
 -\ln p_{\phi}(x_t \mid z_t, h_t)
 -\ln p_{\phi}(r_t \mid z_t, h_t)
@@ -224,40 +230,40 @@ $$
 （2）动力学损失
 
 $$
-\mathcal{L}_{dyn}(\phi)
+\mathcal{L}_{\mathrm{dyn}}(\phi)
 \doteq
 \max\left(
 1,
 D_{\mathrm{KL}}\left[
-sg(q_{\phi}(z_t \mid h_t, x_t))
+\mathrm{sg}(q_{\phi}(z_t \mid h_t, x_t))
 \parallel
 p_{\phi}(\hat{z}_t \mid h_t)
 \right]
 \right)
 $$
 
-其核心目的是让动力学预测器 $p_{\phi}$ 逼近编码器给出的后验分布 $q_{\phi}$。这里使用 $sg()$（stop-gradient，停止梯度）操作，表示在拉近两个分布距离时，只更新动力学预测器的参数，而不影响编码器提取特征的方式。
+其核心目的是让动力学预测器 $p_{\phi}$ 逼近编码器给出的后验分布 $q_{\phi}$。这里使用 $\mathrm{sg}(\cdot)$（stop-gradient，停止梯度）操作，表示在拉近两个分布距离时，只更新动力学预测器的参数，而不影响编码器提取特征的方式。
 
 同时，公式外围包裹的 $\max(1, \cdot)$ 引入了空闲位（Free bits）技术：当 KL 散度下降到 1 nat $\approx 1.44$ bits 以下时，模型会停止在这项损失上的惩罚，避免学到过于退化的平凡动力学，从而将学习重点转移回预测损失上。
 
 （3）表示损失
 
 $$
-\mathcal{L}_{rep}(\phi)
+\mathcal{L}_{\mathrm{rep}}(\phi)
 \doteq
 \max\left(
 1,
 D_{\mathrm{KL}}\left[
 q_{\phi}(z_t \mid h_t, x_t)
 \parallel
-sg(p_{\phi}(\hat{z}_t \mid h_t))
+\mathrm{sg}(p_{\phi}(\hat{z}_t \mid h_t))
 \right]
 \right)
 $$
 
 与上一个损失相反，表示损失的梯度方向被限制在编码器 $q_{\phi}$ 上。它的目的是反向规范编码器的行为，促使它提取出来的隐状态更加“有规律”、更容易被动力学模型预测。
 
-通过巧妙运用停止梯度操作和不同的损失缩放（在论文中设定为 $\beta_{pred} = 1$、$\beta_{dyn} = 1$、$\beta_{rep} = 0.1$），RSSM 解决了以往“强正则化在简单图像有效，但在复杂 3D 环境会抹杀关键细节”的进退两难问题，实现了跨领域的鲁棒性。
+通过巧妙运用停止梯度操作和不同的损失缩放（在论文中设定为 $\beta_{\mathrm{pred}} = 1$、$\beta_{\mathrm{dyn}} = 1$、$\beta_{\mathrm{rep}} = 0.1$），RSSM 解决了以往“强正则化在简单图像有效，但在复杂 3D 环境会抹杀关键细节”的进退两难问题，实现了跨领域的鲁棒性。
 
 ## 三、结合并行扫描的状态空间模型
 
@@ -346,8 +352,8 @@ $$
 a_j \bullet a_i
 =
 \begin{cases}
-(a_{j,a} \odot a_{i,a}, a_{j,a} \otimes a_{i,b} + a_{j,b}, a_{i,c}), & \text{if } a_{j,c} = 0 \\
-(a_{j,a}, a_{j,b}, a_{j,c}), & \text{if } a_{j,c} = 1
+(a_{j,a} \odot a_{i,a}, a_{j,a} \otimes a_{i,b} + a_{j,b}, a_{i,c}), & \mathrm{if}\; a_{j,c} = 0 \\
+(a_{j,a}, a_{j,b}, a_{j,c}), & \mathrm{if}\; a_{j,c} = 1
 \end{cases}
 $$
 
@@ -362,11 +368,11 @@ RSSM作为RNN，在长程规划上存在劣势。Block-Causal Transformer是Tran
 它采用严格的 Token 级下三角掩码。对于任意两个 Token 索引 $i, j \in \{1, 2, \ldots, N\}$，掩码定义为：
 
 $$
-M^{causal}_{i,j}
+M^{\mathrm{causal}}_{i,j}
 =
 \begin{cases}
-0, & \text{if } i \ge j \\
--\infty, & \text{if } i < j
+0, & \mathrm{if}\; i \ge j \\
+-\infty, & \mathrm{if}\; i \lt j
 \end{cases}
 $$
 
@@ -377,11 +383,11 @@ $$
 它采用块级因果掩码（Block-lower-triangular Mask）。定义映射函数 $t(i)$ 为 Token $i$ 所在的时间步（帧序号），其掩码定义为：
 
 $$
-M^{block}_{i,j}
+M^{\mathrm{block}}_{i,j}
 =
 \begin{cases}
-0, & \text{if } t(i) \ge t(j) \\
--\infty, & \text{if } t(i) < t(j)
+0, & \mathrm{if}\; t(i) \ge t(j) \\
+-\infty, & \mathrm{if}\; t(i) \lt t(j)
 \end{cases}
 $$
 
