@@ -31,11 +31,11 @@ $$
 $$
 \nabla_\theta J(\theta)
 =\mathbb{E}_{\pi_\theta}
-[
+\bigl[
 \sum_{t=0}^{T}
 (\sum_{t'=t}^{T}\gamma^{t'-t}r_{t'})
 \nabla_\theta\log\pi_\theta(a_t|s_t)
-]
+\bigr]
 $$
 
 外层从0到T，代表θ的更新让动作链里每一个时间步的策略都得到优化；内层从t到T，代表每一个优化的幅度都只取决于未来的奖励，而与t之前已经获得的奖励无关。
@@ -45,10 +45,10 @@ $$
 $$
 \nabla J(\theta)
 =\mathbb{E}_{\tau\sim\pi}
-[
+\bigl[
 \sum_{t=0}^{T}
 \nabla_\theta\log\pi_\theta(a_t|s_t)Q^{\pi}(s_t,a_t)
-]
+\bigr]
 $$
 
 这里Q_π(s_t,a_t)表示对于(s_t,a_t)，未来累积奖励G_t的期望值。
@@ -65,10 +65,10 @@ $$
 \nabla_\theta J(\theta)
 \approx
 \frac{1}{N}\sum_{i=1}^{N}
-(
+\bigl(
 \sum_{t=0}^{T}
 \nabla_\theta\log\pi_\theta(a_t^{(i)}|s_t^{(i)})G_t^{(i)}
-)
+\bigr)
 $$
 
 当然，蒙特卡洛方法估计方差较大，这主要是因为G_t的不稳定性。详细分析如下：
@@ -107,10 +107,10 @@ $$
 $$
 \nabla_\theta J(\theta)
 =\mathbb{E}_{\tau\sim\pi_\theta}
-[
+\bigl[
 \sum_{t=0}^{T}
 (G_t-b(s_t))\nabla_\theta\log\pi_\theta(a_t|s_t)
-]
+\bigr]
 $$
 
 这个公式与 REINFORCE 唯一的区别在于我们使用了 $G_t-b(s_t)$ 而不是 $G_t$。
@@ -120,10 +120,10 @@ $$
 $$
 \nabla J(\theta)
 =\mathbb{E}
-[
+\bigl[
 \sum_{t=0}^{T}
 \nabla\log\pi(a_t|s_t)\cdot(G_t-b(s_t))
-]
+\bigr]
 $$
 
 通常，我们把 $b(s_t)$ 设为当前状态的平均价值（即 $V^{\pi}(s_t)$）。回到刚才的例子，假设平均分是 $+55$ 分：

@@ -65,7 +65,7 @@ $$
 最终得到：
 
 $$
-\mathbb{E}[\max_a Q_{w^{-}}(s,a)-\max_{a'}Q_*(s,a')]=\frac{m-1}{m+1}
+\mathbb{E}[\max_a Q_{w^{-}}(s,a)-\max_{a'}Q^{*}(s,a')]=\frac{m-1}{m+1}
 $$
 
 如果只有一个动作可以选择，没有max操作，那么随着每一次采样：
